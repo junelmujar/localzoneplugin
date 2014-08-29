@@ -116,7 +116,17 @@ if ( in_array( 'woocommerce/woocommerce.php', apply_filters( 'active_plugins', g
 
 				}	
 
-
+				function get_category_id( $product_id ) {
+					$terms = get_the_terms( $product_id, 'product_cat' );
+					$category = null;
+					foreach ($terms as $term) {
+						if ($term->parent != 0) {
+							$category = $term;
+							break;
+						}
+					}			
+					return $category->term_id;		
+				}
 
 				/**
 				 * calculate_shipping function.
@@ -132,6 +142,7 @@ if ( in_array( 'woocommerce/woocommerce.php', apply_filters( 'active_plugins', g
 
 					$weight = ceil($woocommerce->cart->cart_contents_weight);
 					
+					$overrides = array();
 					foreach ($this->free_shipping_override as $key => $val) {
 						$overrides[$val->id] = ($val->value ? $val->value : 0);
 					}
@@ -141,27 +152,28 @@ if ( in_array( 'woocommerce/woocommerce.php', apply_filters( 'active_plugins', g
 					
 					$ctr = 0;
 					foreach ( $woocommerce->cart->get_cart() as $cart_item_key => $cart_item ) {
+
 						$product_id = $cart_item['product_id'];
 						$qty        = $cart_item['quantity'];
+						$category_id= $this->get_category_id($product_id);
 
-			            $this->add_rate(array
-			            (
-			                'id'       => 'test'.$product_id,
-			                'label'    => 'west',
-			                'cost'     => $qty,
-			                'taxes'    => '',
-			                'calc_tax' => ''
-			            ));		
+						// Debug: To check if right category is returned;
+			            // $this->add_rate(array
+			            // (
+			            //     'id'       => 'test'.$product_id,
+			            //     'label'    => $product_id,
+			            //     'cost'     => $category_id,
+			            //     'taxes'    => '',
+			            //     'calc_tax' => ''
+			            // ));		
 
-			            if ($overrides[$product_id] > 0) {
-			            	$override_qty = $overrides[$product_id];
+			            if (!empty($overrides[$category_id])) {
+			            	$override_qty = $overrides[$category_id];
 			            	if ($qty >= $override_qty) {
 			            		$ctr++;
 			            	}
 			            } 			
 					}
-
-					echo 'Asfasf => '.$ctr;
 
 					if ($ctr == 0) {
 						if (in_array($billing_postcode, $this->city_zone)) {
@@ -174,14 +186,15 @@ if ( in_array( 'woocommerce/woocommerce.php', apply_filters( 'active_plugins', g
 						$price = 0;
 					}
 
-		            $this->add_rate(array
-		            (
-		                'id'       => 'free_check123',
-		                'label'    => 'free_check1',
-		                'cost'     => $ctr,
-		                'taxes'    => '',
-		                'calc_tax' => ''
-		            ));	
+					// Debug: Check for the items meeting the free shipping rule;
+		            // $this->add_rate(array
+		            // (
+		            //     'id'       => 'free_check123',
+		            //     'label'    => 'free_check1',
+		            //     'cost'     => $ctr,
+		            //     'taxes'    => '',
+		            //     'calc_tax' => ''
+		            // ));	
 
 		            $this->add_rate(array
 		            (
@@ -221,6 +234,8 @@ if ( in_array( 'woocommerce/woocommerce.php', apply_filters( 'active_plugins', g
 					foreach ($this->free_shipping_override as $key => $val) {
 						$overrides[$val->id] = ($val->value ? $val->value : 0);
 					}
+
+					//print_r($product_categories);
 			     	foreach ( $product_categories as $product_category ) {
 				       	if ($product_category->parent != 0) {
 						?>					       		
